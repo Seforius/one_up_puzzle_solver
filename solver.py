@@ -21,6 +21,12 @@ class Coordinate:
 
     def __hash__(self):
         return hash((self.row, self.col))
+    
+    def __str__(self):
+        return f'({self.row}, {self.col})'
+    
+    def __repr__(self) -> str:
+        return f'({self.row}, {self.col})'
 
 class Segment:
     
@@ -36,11 +42,13 @@ class Segment:
             values.append(board[coordinate.row][coordinate.col].value)
         return values
     
-    def get_values_except(self, coordinate: Coordinate) -> list[int]:
+    def get_values_except(self, coordinate_to_exclude: Coordinate) -> list[int]:
         values = []
         for coordinate in self.coordinates:
-            if coordinate != coordinate:
+            if coordinate != coordinate_to_exclude:
                 values.append(board[coordinate.row][coordinate.col].value)
+
+        return values
 
 def load_board(file_path: str):
 
@@ -64,6 +72,7 @@ def load_blockades(file_path: str):
             coordinate_strings = line.strip().split('|')
             coordinates = [Coordinate(int(coordinate_string.split(',')[0]), int(coordinate_string.split(',')[1])) for coordinate_string in coordinate_strings]
             blockades[(coordinates[0], coordinates[1])] = True
+            blockades[(coordinates[1], coordinates[0])] = True
 
     return blockades
 
@@ -95,6 +104,7 @@ def get_segments(coordinate: Coordinate) -> tuple[Segment, Segment]:
 
     # go down
     current_coordinate = coordinate
+    next_coordinate = Coordinate(coordinate.row + 1, coordinate.col)
 
     current_row = coordinate.row
     current_col = coordinate.col
@@ -126,15 +136,16 @@ def get_segments(coordinate: Coordinate) -> tuple[Segment, Segment]:
 
     # go right
     current_coordinate = coordinate
+    next_coordinate = Coordinate(coordinate.row, coordinate.col + 1)
 
     current_row = coordinate.row
     current_col = coordinate.col
 
     while current_col < len(board[0]) - 1 and (current_coordinate, next_coordinate) not in blockades:
-            
-            current_col += 1
-            current_coordinate = next_coordinate
-            next_coordinate = Coordinate(current_row, current_col + 1)
+
+        current_col += 1
+        current_coordinate = next_coordinate
+        next_coordinate = Coordinate(current_row, current_col + 1)
 
     horizontal_segment_right_coordinate = Coordinate(current_row, current_col)
 
@@ -153,21 +164,32 @@ def get_segments(coordinate: Coordinate) -> tuple[Segment, Segment]:
 # given a coordinate, return the possible values that can be placed in the square at that coordinate
 def get_possible_values(coordinate: Coordinate) -> list[int]:
 
+    debug = coordinate == Coordinate(4, 3)
+
     # get segments for square
     vertical_segment, horizontal_segment = get_segments(coordinate)
 
-    possible_values = []
-    
-    for segment in [vertical_segment, horizontal_segment]:
+    # check vertical segment
+    possible_values_vertical = []
+    values_in_vertical_segment = vertical_segment.get_values_except(coordinate)
 
-        for value in range(1, 10):
-            # if value is not in the segment and is less than the length of the segment, add it to the possible values
-            if value not in segment.get_values_except(coordinate) and value < segment.get_length():
-                possible_values.append(value)
-    
-    return possible_values
+    for value in range(1, 10):
+        # if value is not in the segment and is less than the length of the segment, add it to the possible values
+        if value not in values_in_vertical_segment and value <= vertical_segment.get_length():
+            possible_values_vertical.append(value)
 
-# fill in a coordiante with a value
+    # check horizontal segment
+    possible_values_horizontal = []
+    values_in_horizontal_segment = horizontal_segment.get_values_except(coordinate)
+
+    for value in range(1, 10):
+        # if value is not in the segment and is less than the length of the segment, add it to the possible values
+        if value not in values_in_horizontal_segment and value <= horizontal_segment.get_length():
+            possible_values_horizontal.append(value)
+    
+    return list(set(possible_values_vertical) & set(possible_values_horizontal))
+
+# fill in a coordinate with a value
 def fill_in_value(coordinate: Coordinate, value: int):
     board[coordinate.row][coordinate.col].set_value(value)
 
@@ -203,36 +225,51 @@ def has_unique_possible_value(coordinate: Coordinate, segment: Segment) -> tuple
             if value in board[coordinate.row][coordinate.col].possible_values:
                 return (False, 0)
         return (True, value)
+    
+    return (False, 0)
 
-def main():
+def solve():
+    iterations = 0
 
-    while not board_is_filled():
-
+    while not board_is_filled() and iterations < 100:
     # loop through each square and fill in possible values
         for row in range(len(board)):
             for col in range(len(board[0])):
                 square = board[row][col]
+
+                # skip squares that are already filled
+                if square.value != 0:
+                    continue
+
                 possible_values = get_possible_values(Coordinate(row, col))
+
                 square.possible_values = possible_values
 
     # if a square has only one possible value OR if a square has a value that is not possible in any other square in a segment that it shares, then fill in that value
         for row in range(len(board)):
             for col in range(len(board[0])):
                 square = board[row][col]
+
+                # skip squares that are already filled
+                if square.value != 0:
+                    continue
+
                 if len(square.possible_values) == 1:
                     fill_in_value(Coordinate(row, col), square.possible_values[0])
                 else:
                     for segment in get_segments(Coordinate(row, col)):
-                        has_unique_possible_value, unique_posible_value = has_unique_possible_value(Coordinate(row, col), segment)
+                        has_unique_value, unique_possible_value = has_unique_possible_value(Coordinate(row, col), segment)
 
-                        if has_unique_possible_value:
-                            fill_in_value(Coordinate(row, col), unique_posible_value)
+                        if has_unique_value:
+                            fill_in_value(Coordinate(row, col), unique_possible_value)
     
-    # repeat until the board is filled
+        # repeat until the board is filled
+        iterations += 1
+        print('Board after iteration', iterations)
+        print_board()
 
-    print_board()
+def main():
+    solve()
 
 if __name__ == "__main__":
-    print_board()
-    print_blockades()
-    print_board_with_blockades()
+    main()
