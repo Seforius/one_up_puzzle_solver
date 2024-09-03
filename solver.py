@@ -172,8 +172,6 @@ def get_segments(coordinate: Coordinate) -> tuple[Segment, Segment]:
 # given a coordinate, return the possible values that can be placed in the square at that coordinate
 def get_possible_values(coordinate: Coordinate) -> list[int]:
 
-    debug = coordinate == Coordinate(5, 2)
-
     # get segments for square
     vertical_segment, horizontal_segment = get_segments(coordinate)
 
@@ -199,7 +197,7 @@ def get_possible_values(coordinate: Coordinate) -> list[int]:
 
     return intersection
 
-# fill in a coordinate with a value
+# fill in a coordinate with a value, and then update the possible values for all squares that share a segment with the square at the coordinate
 def fill_in_value(coordinate: Coordinate, value: int):
     
     # add value and clear possible values
@@ -216,6 +214,7 @@ def fill_in_value(coordinate: Coordinate, value: int):
 
 # check whether the board is filled
 def board_is_filled() -> bool:
+
     for row in board:
         for square in row:
             if square.value == 0:
@@ -224,6 +223,7 @@ def board_is_filled() -> bool:
 
 # print the board
 def print_board():
+
     for row in board:
         for square in row:
             print(square.value, end = " ")
@@ -231,45 +231,36 @@ def print_board():
 
 # print the blockades
 def print_blockades():
+
     for key in blockades:
         print(key[0].row, key[0].col, '|' , key[1].row, key[1].col)
 
+# print the board with blockades
 def print_board_with_blockades():
     pass
 
 # check whether a square has a unique possible value in a segment
 def has_unique_possible_value(coordinate: Coordinate, segment: Segment) -> tuple[bool, int]:
 
-    debug = coordinate == Coordinate(5, 2)
-
+    # get possible values for the square. NOTE: this is dangerous because it assumes the possible values attached to the square are up to date
     possible_values = board[coordinate.row][coordinate.col].possible_values
 
-    # if debug:
-    #     print('Possible values:', possible_values)
-    #     print('Segment:', segment.coordinates)
-
+    # for each value, check every other square that shares the segment of the coordinate. if any square has the value as a possible value, then the value is not unique
     for value in possible_values:
         
         unique = True
-
         for segment_coordinate in segment.get_coordinates_except(coordinate):
-            
             if value in board[segment_coordinate.row][segment_coordinate.col].possible_values:
-
-                if debug:
-                    print('Value', value, 'is in', segment_coordinate)
-
                 # this value is not unique
                 unique = False
                 break
 
         if unique:
-            if debug:
-                print('Unique value:', value)
             return (True, value)
     
     return (False, 0)
 
+# solve the board
 def solve():
     iterations = 0
 
@@ -297,14 +288,12 @@ def solve():
                     continue
 
                 if len(square.possible_values) == 1:
-                    print('Only ', square.possible_values[0] ,' is possible for ', Coordinate(row, col), ' so filling in')
                     fill_in_value(Coordinate(row, col), square.possible_values[0])
                 else:
                     for segment in get_segments(Coordinate(row, col)):
                         has_unique_value, unique_possible_value = has_unique_possible_value(Coordinate(row, col), segment)
 
                         if has_unique_value:
-                            print('Unique value ', unique_possible_value, ' in segment for ', Coordinate(row, col), ' so filling in')
                             fill_in_value(Coordinate(row, col), unique_possible_value)
     
         # repeat until the board is filled
