@@ -172,6 +172,9 @@ def get_segments(coordinate: Coordinate) -> tuple[Segment, Segment]:
 # given a coordinate, return the possible values that can be placed in the square at that coordinate
 def get_possible_values(coordinate: Coordinate) -> list[int]:
 
+    if board[coordinate.row][coordinate.col].value != 0:
+        return []
+
     # get segments for square
     vertical_segment, horizontal_segment = get_segments(coordinate)
 
@@ -272,6 +275,7 @@ def solve():
 
                 # skip squares that are already filled
                 if square.value != 0:
+                    possible_values = []
                     continue
 
                 possible_values = get_possible_values(Coordinate(row, col))
